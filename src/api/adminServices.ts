@@ -7,6 +7,7 @@ import type {
   Inspection,
   Report,
   School,
+  Review,
   LoginResponse,
   CurrentAccountResponse,
 } from '../types';
@@ -22,6 +23,14 @@ export async function loginAdmin(credentials: { email: string; password: string 
 export async function getCurrentAccount(): Promise<CurrentAccountResponse> {
   return apiFetch<CurrentAccountResponse>('/auth/me', {
     method: 'GET',
+  });
+}
+
+// 1. DELETE /auth/me - Delete caller's own user account and linked profile
+export async function deleteAccount(password: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/auth/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ password }),
   });
 }
 
@@ -175,4 +184,46 @@ export async function sendSystemAnnouncement(data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// 2. DELETE /properties/:id - Delete an owned property listing
+export async function deleteProperty(propertyId: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/properties/${propertyId}`, {
+    method: 'DELETE',
+  });
+}
+
+// 3. DELETE /inspections/:id - Cancel an inspection and release the booked slot
+export async function cancelInspection(
+  inspectionId: string
+): Promise<{ inspection?: Inspection; message?: string }> {
+  return apiFetch<{ inspection?: Inspection; message?: string }>(`/inspections/${inspectionId}`, {
+    method: 'DELETE',
+  });
+}
+
+// 4. DELETE /slots/:id - Remove an open (unbooked) inspection time slot
+export async function deleteSlot(slotId: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/slots/${slotId}`, {
+    method: 'DELETE',
+  });
+}
+
+// 5. DELETE /reviews/:id - Delete an authored property review
+export async function deleteReview(reviewId: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/reviews/${reviewId}`, {
+    method: 'DELETE',
+  });
+}
+
+// Reviews queries
+export async function getPropertyReviews(
+  propertyId: string
+): Promise<{ reviews: Review[]; avgRating: number | null; count: number }> {
+  return apiFetch<{ reviews: Review[]; avgRating: number | null; count: number }>(
+    `/reviews/property/${propertyId}`,
+    {
+      method: 'GET',
+    }
+  );
 }

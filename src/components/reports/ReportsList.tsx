@@ -186,28 +186,26 @@ export const ReportsList: React.FC = () => {
                       </td>
 
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           {isOpen && (
                             <button
                               type="button"
-                              className="btn-action"
+                              className="btn btn-secondary btn-sm"
                               title="Mark as Under Review"
                               onClick={() => handleOpenUpdate(report, 'reviewed')}
-                              aria-label="Review report"
                             >
-                              <Clock size={15} />
+                              <Clock size={13} /> Under Review
                             </button>
                           )}
 
                           {report.status !== 'resolved' && (
                             <button
                               type="button"
-                              className="btn-action btn-action-success"
+                              className="btn btn-success btn-sm"
                               title="Mark as Resolved"
                               onClick={() => handleOpenUpdate(report, 'resolved')}
-                              aria-label="Resolve report"
                             >
-                              <CheckCircle size={15} />
+                              <CheckCircle size={13} /> Resolve
                             </button>
                           )}
                         </div>

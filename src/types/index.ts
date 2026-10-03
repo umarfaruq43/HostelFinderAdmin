@@ -155,6 +155,30 @@ export interface School {
   updatedAt: string;
 }
 
+export interface Review {
+  _id: string;
+  propertyId: string;
+  studentId?: {
+    _id: string;
+    fullName?: string;
+  } | string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Slot {
+  _id: string;
+  propertyId: string;
+  start?: string;
+  end?: string;
+  startTime?: string;
+  endTime?: string;
+  status: 'open' | 'booked';
+  createdAt?: string;
+}
+
 export interface AuthUser {
   id: string;
   email: string;

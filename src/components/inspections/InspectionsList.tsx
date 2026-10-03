@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getPlatformInspections } from '../../api/adminServices';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getPlatformInspections, cancelInspection } from '../../api/adminServices';
+import { useToast } from '../../context/ToastContext';
 import { Badge } from '../common/Badge';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 import {
   CalendarCheck,
@@ -14,14 +16,34 @@ import {
   XCircle,
   Filter,
 } from 'lucide-react';
-
+import type { Inspection } from '../../types';
 
 export const InspectionsList: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [inspectionToCancel, setInspectionToCancel] = useState<Inspection | null>(null);
 
   const { data: inspectionsData, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'inspections', statusFilter],
     queryFn: () => getPlatformInspections(statusFilter || undefined),
+  });
+
+  // Cancel Inspection Mutation (DELETE /inspections/:id)
+  const cancelMutation = useMutation({
+    mutationFn: (inspectionId: string) => cancelInspection(inspectionId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'inspections'] });
+      showToast(
+        'success',
+        data.message || 'Inspection booking cancelled and time slot released back to open'
+      );
+      setInspectionToCancel(null);
+    },
+    onError: (err: Error) => {
+      showToast('error', err.message || 'Failed to cancel inspection (Student ownership required)');
+    },
   });
 
   const inspections = inspectionsData?.inspections || [];
@@ -91,6 +113,7 @@ export const InspectionsList: React.FC = () => {
                   <th>Scheduled Date & Time</th>
                   <th>Booking Status</th>
                   <th>Student Decision</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,6 +132,11 @@ export const InspectionsList: React.FC = () => {
                     typeof insp.providerId === 'object' && insp.providerId?.businessName
                       ? insp.providerId.businessName
                       : 'Landlord';
+
+                  const canCancel =
+                    insp.status !== 'completed' &&
+                    insp.status !== 'cancelled' &&
+                    insp.status !== 'missed';
 
                   return (
                     <tr key={insp._id}>
@@ -179,6 +207,21 @@ export const InspectionsList: React.FC = () => {
                           <span className="text-muted text-xs">—</span>
                         )}
                       </td>
+
+                      <td className="text-right">
+                        {canCancel ? (
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger btn-sm"
+                            title="Cancel Booking & Release Slot (DELETE /inspections/:id)"
+                            onClick={() => setInspectionToCancel(insp)}
+                          >
+                            <XCircle size={13} /> Cancel
+                          </button>
+                        ) : (
+                          <span className="text-muted text-xs">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -187,6 +230,20 @@ export const InspectionsList: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Cancel Inspection Confirm Dialog (DELETE /inspections/:id) */}
+      {inspectionToCancel && (
+        <ConfirmDialog
+          isOpen={!!inspectionToCancel}
+          onClose={() => setInspectionToCancel(null)}
+          onConfirm={() => cancelMutation.mutate(inspectionToCancel._id)}
+          title="Cancel Inspection Booking"
+          message={`Are you sure you want to cancel inspection booking #${inspectionToCancel._id.substring(0, 8)}? (DELETE /inspections/:id). This releases the booked slot back to 'open' status for other students and sends a cancellation notification.`}
+          confirmLabel="Cancel Booking & Free Slot"
+          variant="danger"
+          isLoading={cancelMutation.isPending}
+        />
+      )}
     </div>
   );
 };

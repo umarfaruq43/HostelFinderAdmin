@@ -69,11 +69,19 @@ A modern, high-performance administrative control console for the **Off-Campus H
 - `POST /notifications/test`: Real-time SMTP email delivery diagnostic health check.
 - `POST /notifications/announce`: Broadcast announcement dispatcher to any registered user.
 
-### 11. System & API Configuration (`/settings`)
+### 11. Complete DELETE Operations Integration
+- **`DELETE /auth/me` (Delete Account)**: Available in **Settings & Configuration** under the **Danger Zone**. Requires confirmation with the user's current password (`{ "password": "..." }`), cascades linked profile deletions, revokes the session, and redirects to login.
+- **`DELETE /properties/:id` (Delete Property Listing)**: Available in **Property Moderation Queue** table actions and within the **Property Detail Modal**. Permanently deletes the listing document with ownership verification.
+- **`DELETE /inspections/:id` (Cancel Inspection Booking)**: Available in **Platform Inspections** table for active bookings. Sets inspection status to `cancelled`, atomically flips the booked slot back to `open` status for other students, and dispatches cancellation notifications.
+- **`DELETE /slots/:id` (Remove Inspection Slot)**: Available inside the **Property Detail Modal** under the **Inspection Slots** tab. Atomically deletes unbooked `open` time slots and prevents race conditions (returns 409 Conflict if already booked).
+- **`DELETE /reviews/:id` (Delete Review)**: Available in the dedicated **Reviews & Ratings Moderation** section and within the **Property Detail Modal** Reviews tab. Deletes offending or inappropriate reviews with student author verification.
+
+### 12. System & API Configuration (`/settings`)
 - Custom Base URL configuration.
 - Real-time API Ping diagnostic tool with latency measurement in milliseconds.
 - Admin Bearer Token viewer with 1-click clipboard copy.
 - React Query cache invalidation button.
+- Danger Zone account deletion dialog (`DELETE /auth/me`).
 - Dark & Light theme switcher.
 
 ---

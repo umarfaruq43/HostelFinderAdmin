@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   ShieldAlert,
   School,
+  Star,
   BellRing,
   Sliders,
   LogOut,
@@ -24,6 +25,7 @@ export type NavTab =
   | 'properties'
   | 'inspections'
   | 'reports'
+  | 'reviews'
   | 'schools'
   | 'notifications'
   | 'settings';
@@ -119,6 +121,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: ShieldAlert,
       badge: pendingCounts.reports,
       badgeColor: 'rose',
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews & Ratings',
+      icon: Star,
     },
     {
       id: 'schools',

@@ -41,6 +41,10 @@ const TAB_TITLES: Record<NavTab, { title: string; subtitle: string }> = {
     title: 'Dispute & Flagged Reports',
     subtitle: 'Investigate student complaints, fraudulent listings, and policy violations',
   },
+  reviews: {
+    title: 'Property Reviews Moderation',
+    subtitle: 'Audit verified student reviews and delete violating content (DELETE /reviews/:id)',
+  },
   schools: {
     title: 'Schools & Campuses Directory',
     subtitle: 'Manage registered tertiary institutions and proximity anchors',

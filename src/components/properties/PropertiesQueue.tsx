@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPropertiesQueue, reviewPropertyListing } from '../../api/adminServices';
+import { getPropertiesQueue, reviewPropertyListing, deleteProperty } from '../../api/adminServices';
 import { useToast } from '../../context/ToastContext';
 import { Badge } from '../common/Badge';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -15,6 +15,7 @@ import {
   Compass,
   Building,
   Image as ImageIcon,
+  Trash2,
 } from 'lucide-react';
 import type { Property } from '../../types';
 
@@ -27,13 +28,16 @@ export const PropertiesQueue: React.FC = () => {
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
   const [viewProperty, setViewProperty] = useState<Property | null>(null);
 
+  // Property to delete (DELETE /properties/:id)
+  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+
   // Queries
   const { data: propertiesData, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'properties', activeTab],
     queryFn: () => getPropertiesQueue(activeTab || undefined),
   });
 
-  // Mutation
+  // Review mutation (PUT /admin/properties/:propertyId)
   const reviewMutation = useMutation({
     mutationFn: ({
       propertyId,
@@ -59,6 +63,22 @@ export const PropertiesQueue: React.FC = () => {
     },
     onError: (err: Error) => {
       showToast('error', err.message || 'Property review failed');
+    },
+  });
+
+  // Delete property mutation (DELETE /properties/:id)
+  const deleteMutation = useMutation({
+    mutationFn: (propertyId: string) => deleteProperty(propertyId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'properties'] });
+      showToast('success', data.message || 'Property listing deleted successfully');
+      setPropertyToDelete(null);
+      if (viewProperty?._id === propertyToDelete?._id) {
+        setViewProperty(null);
+      }
+    },
+    onError: (err: Error) => {
+      showToast('error', err.message || 'Failed to delete property listing');
     },
   });
 
@@ -153,7 +173,7 @@ export const PropertiesQueue: React.FC = () => {
                   <th>Rent / Price</th>
                   <th>Location</th>
                   <th>Status</th>
-                  <th className="text-right">Moderation</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,40 +247,47 @@ export const PropertiesQueue: React.FC = () => {
                       </td>
 
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           <button
                             type="button"
-                            className="btn-action"
+                            className="btn btn-secondary btn-sm"
                             title="Inspect complete listing"
                             onClick={() => setViewProperty(prop)}
-                            aria-label="View property details"
                           >
-                            <Eye size={15} />
+                            <Eye size={13} /> View
                           </button>
 
                           {isPending && (
                             <>
                               <button
                                 type="button"
-                                className="btn-action btn-action-success"
+                                className="btn btn-success btn-sm"
                                 title="Approve & Publish Listing"
                                 onClick={() => handleOpenApprove(prop)}
-                                aria-label="Approve property"
                               >
-                                <CheckCircle size={15} />
+                                <CheckCircle size={13} /> Approve
                               </button>
 
                               <button
                                 type="button"
-                                className="btn-action btn-action-danger"
+                                className="btn btn-outline-danger btn-sm"
                                 title="Reject Listing"
                                 onClick={() => handleOpenReject(prop)}
-                                aria-label="Reject property"
                               >
-                                <XCircle size={15} />
+                                <XCircle size={13} /> Reject
                               </button>
                             </>
                           )}
+
+                          {/* Delete Property Listing (DELETE /properties/:id) */}
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            title="Delete Property Listing (DELETE /properties/:id)"
+                            onClick={() => setPropertyToDelete(prop)}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -272,7 +299,7 @@ export const PropertiesQueue: React.FC = () => {
         )}
       </div>
 
-      {/* Decision Confirm Dialog */}
+      {/* Moderation Review Confirm Dialog */}
       {selectedPropertyForAction && (
         <ConfirmDialog
           isOpen={!!selectedPropertyForAction}
@@ -296,6 +323,20 @@ export const PropertiesQueue: React.FC = () => {
         />
       )}
 
+      {/* Property Deletion Confirm Dialog (DELETE /properties/:id) */}
+      {propertyToDelete && (
+        <ConfirmDialog
+          isOpen={!!propertyToDelete}
+          onClose={() => setPropertyToDelete(null)}
+          onConfirm={() => deleteMutation.mutate(propertyToDelete._id)}
+          title={`Delete Property: ${propertyToDelete.title}`}
+          message={`Are you sure you want to delete this property listing? (DELETE /properties/${propertyToDelete._id}). This deletes the Property document permanently. Note: The backend verifies provider ownership.`}
+          confirmLabel="Delete Listing"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+        />
+      )}
+
       {/* Detailed Inspection Modal */}
       {viewProperty && (
         <PropertyDetailModal
@@ -304,6 +345,7 @@ export const PropertiesQueue: React.FC = () => {
           onClose={() => setViewProperty(null)}
           onApprove={handleOpenApprove}
           onReject={handleOpenReject}
+          onDelete={(p) => setPropertyToDelete(p)}
         />
       )}
     </div>

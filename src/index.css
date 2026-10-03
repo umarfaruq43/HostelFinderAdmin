@@ -1052,6 +1052,18 @@ a {
   background-color: var(--primary-light);
 }
 
+.btn-outline-danger {
+  background-color: var(--danger-light);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  background-color: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
 .btn-action {
   width: 2rem;
   height: 2rem;

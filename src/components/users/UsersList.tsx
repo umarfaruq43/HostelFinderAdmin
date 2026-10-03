@@ -245,16 +245,15 @@ export const UsersList: React.FC = () => {
                       </td>
 
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           {/* Announcement button */}
                           <button
                             type="button"
-                            className="btn-action"
+                            className="btn btn-secondary btn-sm"
                             title={`Send direct notice to ${user.email}`}
                             onClick={() => setAnnouncementUser(user)}
-                            aria-label="Send announcement"
                           >
-                            <Send size={15} />
+                            <Send size={13} /> Message
                           </button>
 
                           {/* Suspend or Reactivate button (disabled for admin accounts) */}
@@ -263,22 +262,20 @@ export const UsersList: React.FC = () => {
                               {user.isActive ? (
                                 <button
                                   type="button"
-                                  className="btn-action btn-action-danger"
+                                  className="btn btn-outline-danger btn-sm"
                                   title="Suspend account"
                                   onClick={() => handleOpenSuspend(user)}
-                                  aria-label="Suspend user"
                                 >
-                                  <UserX size={15} />
+                                  <UserX size={13} /> Suspend
                                 </button>
                               ) : (
                                 <button
                                   type="button"
-                                  className="btn-action btn-action-success"
+                                  className="btn btn-success btn-sm"
                                   title="Reactivate account"
                                   onClick={() => handleOpenActivate(user)}
-                                  aria-label="Reactivate user"
                                 >
-                                  <UserCheck size={15} />
+                                  <UserCheck size={13} /> Reactivate
                                 </button>
                               )}
                             </>

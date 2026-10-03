@@ -229,37 +229,34 @@ export const StudentsQueue: React.FC = () => {
                       </td>
 
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           <button
                             type="button"
-                            className="btn-action"
+                            className="btn btn-secondary btn-sm"
                             title="Inspect application details"
                             onClick={() => setViewStudent(student)}
-                            aria-label="View student details"
                           >
-                            <Eye size={15} />
+                            <Eye size={13} /> View
                           </button>
 
                           {isPending && (
                             <>
                               <button
                                 type="button"
-                                className="btn-action btn-action-success"
+                                className="btn btn-success btn-sm"
                                 title="Approve & Verify Student"
                                 onClick={() => handleOpenApprove(student)}
-                                aria-label="Approve student"
                               >
-                                <CheckCircle size={15} />
+                                <CheckCircle size={13} /> Approve
                               </button>
 
                               <button
                                 type="button"
-                                className="btn-action btn-action-danger"
+                                className="btn btn-outline-danger btn-sm"
                                 title="Reject Application"
                                 onClick={() => handleOpenReject(student)}
-                                aria-label="Reject student"
                               >
-                                <XCircle size={15} />
+                                <XCircle size={13} /> Reject
                               </button>
                             </>
                           )}

@@ -11,6 +11,7 @@ import { ProvidersQueue } from './components/providers/ProvidersQueue';
 import { PropertiesQueue } from './components/properties/PropertiesQueue';
 import { InspectionsList } from './components/inspections/InspectionsList';
 import { ReportsList } from './components/reports/ReportsList';
+import { ReviewsManagement } from './components/reviews/ReviewsManagement';
 import { SchoolsList } from './components/schools/SchoolsList';
 import { NotificationsCenter } from './components/notifications/NotificationsCenter';
 import { SettingsView } from './components/settings/SettingsView';
@@ -106,6 +107,7 @@ export const App: React.FC = () => {
       {currentTab === 'properties' && <PropertiesQueue />}
       {currentTab === 'inspections' && <InspectionsList />}
       {currentTab === 'reports' && <ReportsList />}
+      {currentTab === 'reviews' && <ReviewsManagement />}
       {currentTab === 'schools' && <SchoolsList />}
       {currentTab === 'notifications' && <NotificationsCenter />}
       {currentTab === 'settings' && <SettingsView />}
