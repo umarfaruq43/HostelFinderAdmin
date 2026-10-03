@@ -90,7 +90,14 @@ export interface Property {
   updatedAt: string;
 }
 
-export type InspectionStatus = 'requested' | 'confirmed' | 'completed' | 'missed' | 'cancelled' | 'declined';
+export type InspectionStatus =
+  | 'requested'
+  | 'confirmed'
+  | 'completed'
+  | 'missed'
+  | 'cancelled'
+  | 'declined'
+  | 'rejected';
 
 export interface Inspection {
   _id: string;
@@ -171,12 +178,24 @@ export interface Review {
 export interface Slot {
   _id: string;
   propertyId: string;
+  date?: string;
   start?: string;
   end?: string;
   startTime?: string;
   endTime?: string;
   status: 'open' | 'booked';
   createdAt?: string;
+}
+
+export interface GroupedDateSlots {
+  date: string;
+  slots: Slot[];
+}
+
+export interface PropertySlotsResponse {
+  count: number;
+  slots: Slot[];
+  groupedByDate: GroupedDateSlots[];
 }
 
 export interface AuthUser {

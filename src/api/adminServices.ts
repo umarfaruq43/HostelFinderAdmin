@@ -8,6 +8,7 @@ import type {
   Report,
   School,
   Review,
+  PropertySlotsResponse,
   LoginResponse,
   CurrentAccountResponse,
 } from '../types';
@@ -124,6 +125,16 @@ export async function getPlatformInspections(status?: string): Promise<{ inspect
   });
 }
 
+export async function reviewInspectionBooking(
+  inspectionId: string,
+  data: { status: 'confirmed' | 'rejected'; reason?: string }
+): Promise<{ message?: string; inspection?: Inspection }> {
+  return apiFetch<{ message?: string; inspection?: Inspection }>(`/admin/inspections/${inspectionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 // Reports & Moderation Flags
 export async function getReportsQueue(status?: string): Promise<{ reports: Report[]; count?: number }> {
   return apiFetch<{ reports: Report[]; count?: number }>('/admin/reports', {
@@ -206,6 +217,13 @@ export async function cancelInspection(
 export async function deleteSlot(slotId: string): Promise<{ message: string }> {
   return apiFetch<{ message: string }>(`/slots/${slotId}`, {
     method: 'DELETE',
+  });
+}
+
+// Inspection Slots: GET /slots/property/:propertyId (Student / Provider / Admin)
+export async function getPropertySlots(propertyId: string): Promise<PropertySlotsResponse> {
+  return apiFetch<PropertySlotsResponse>(`/slots/property/${propertyId}`, {
+    method: 'GET',
   });
 }
 

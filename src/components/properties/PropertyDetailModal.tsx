@@ -8,6 +8,7 @@ import {
   getPropertyReviews,
   deleteReview,
   deleteSlot,
+  getPropertySlots,
 } from '../../api/adminServices';
 import {
   MapPin,
@@ -19,9 +20,12 @@ import {
   Image as ImageIcon,
   Trash2,
   Star,
-  AlertCircle,
+  Calendar,
+  Clock,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
-import type { Property, Review } from '../../types';
+import type { Property, Review, Slot } from '../../types';
 
 interface PropertyDetailModalProps {
   property: Property | null;
@@ -30,6 +34,39 @@ interface PropertyDetailModalProps {
   onApprove?: (property: Property) => void;
   onReject?: (property: Property) => void;
   onDelete?: (property: Property) => void;
+}
+
+function formatSlotTime(slot: Slot): string {
+  if (slot.startTime && slot.endTime) {
+    return `${slot.startTime} – ${slot.endTime}`;
+  }
+  if (slot.start && slot.end) {
+    const s = new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const e = new Date(slot.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${s} – ${e}`;
+  }
+  if (slot.startTime) return slot.startTime;
+  if (slot.start) {
+    return new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return 'Scheduled Slot';
+}
+
+function formatGroupDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  } catch {
+    // fallback
+  }
+  return dateStr;
 }
 
 export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
@@ -60,6 +97,18 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     enabled: !!property && activeSubTab === 'reviews',
   });
 
+  // Fetch inspection slots for this property (GET /slots/property/:id)
+  const {
+    data: slotsData,
+    isLoading: loadingSlots,
+    refetch: refetchSlots,
+    isFetching: isFetchingSlots,
+  } = useQuery({
+    queryKey: ['property', 'slots', property?._id],
+    queryFn: () => (property ? getPropertySlots(property._id) : null),
+    enabled: !!property && activeSubTab === 'slots',
+  });
+
   // Delete review mutation (DELETE /reviews/:id)
   const deleteReviewMutation = useMutation({
     mutationFn: (reviewId: string) => deleteReview(reviewId),
@@ -77,6 +126,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   const deleteSlotMutation = useMutation({
     mutationFn: (slotId: string) => deleteSlot(slotId),
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['property', 'slots', property?._id] });
       showToast('success', data.message || 'Slot removed successfully');
       setSlotToDeleteId(null);
       setSlotIdInput('');
@@ -166,7 +216,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
             className={`tab-btn ${activeSubTab === 'slots' ? 'tab-btn-active' : ''}`}
             onClick={() => setActiveSubTab('slots')}
           >
-            Inspection Slots (DELETE /slots/:id)
+            Inspection Slots ({slotsData?.count ?? '…'})
           </button>
         </div>
 
@@ -369,53 +419,196 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           </div>
         )}
 
-        {/* Slots Sub-Tab (DELETE /slots/:id) */}
+        {/* Slots Sub-Tab (GET /slots/property/:id & DELETE /slots/:id) */}
         {activeSubTab === 'slots' && (
           <div className="slots-subtab space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h4 className="text-sm font-bold">Inspection Slots Management</h4>
+                <h4 className="text-sm font-bold flex items-center gap-1.5">
+                  <Calendar size={16} className="text-purple" />
+                  <span>Open Inspection Slots</span>
+                  {slotsData?.count !== undefined && (
+                    <span className="badge badge-purple badge-sm ml-1">
+                      {slotsData.count} total
+                    </span>
+                  )}
+                </h4>
                 <p className="text-xs text-muted">
-                  Remove open, unbooked inspection slots via <code>DELETE /slots/:id</code>
+                  Queried via <code>GET /slots/property/:id</code> (accessible to Student, Provider, and Admin)
                 </p>
               </div>
-              <span className="badge badge-purple badge-sm">Owner Provider Only</span>
+
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm flex items-center gap-1"
+                onClick={() => refetchSlots()}
+                disabled={isFetchingSlots}
+              >
+                <RefreshCw size={12} className={isFetchingSlots ? 'spin' : ''} />
+                Refresh
+              </button>
             </div>
 
+            {/* Auto-generation notification alert */}
             <div className="alert alert-info">
-              <div className="flex items-start gap-2 text-xs">
-                <AlertCircle size={16} className="text-info flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 text-xs">
+                <Sparkles size={16} className="text-info flex-shrink-0 mt-0.5" />
                 <div>
-                  <strong>Backend Rule:</strong> The server atomically deletes the slot only if its
-                  status is <code>open</code> and owned by the caller. If the slot is already booked,
-                  the backend returns <code>409 Conflict</code>.
+                  <strong>Auto-Generated Weekday Slots:</strong> When a property listing is created,
+                  the platform automatically generates open inspection slots for upcoming weekdays
+                  (<strong>2:00 PM – 3:00 PM</strong>, <strong>4:00 PM – 5:00 PM</strong>,{' '}
+                  <strong>5:00 PM – 6:00 PM</strong>, <strong>6:00 PM – 7:00 PM</strong>).
                 </div>
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="delete-slot-id">
-                Slot MongoDB ObjectId to Remove
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="delete-slot-id"
-                  type="text"
-                  className="form-input font-mono text-xs"
-                  placeholder="e.g. 6abd2953a0704e9c7f7c4077"
-                  value={slotIdInput}
-                  onChange={(e) => setSlotIdInput(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => setSlotToDeleteId(slotIdInput.trim())}
-                  disabled={!slotIdInput.trim() || deleteSlotMutation.isPending}
-                >
-                  <Trash2 size={15} /> Remove Slot
-                </button>
+            {loadingSlots ? (
+              <div className="p-8 text-center">
+                <div className="spinner mx-auto mb-2" />
+                <span className="text-xs text-muted">Fetching property inspection slots...</span>
               </div>
-            </div>
+            ) : !slotsData?.slots || slotsData.slots.length === 0 ? (
+              <div className="p-8 text-center bg-surface-raised border border-theme rounded-lg">
+                <Clock size={28} className="text-muted mx-auto mb-2" />
+                <p className="text-sm font-medium">No Inspection Slots Found</p>
+                <p className="text-xs text-muted mt-1">
+                  There are currently no active or open inspection time slots configured for this property listing.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Render grouped by date if available, or flat list */}
+                {slotsData.groupedByDate && slotsData.groupedByDate.length > 0 ? (
+                  slotsData.groupedByDate.map((group, groupIdx) => (
+                    <div key={groupIdx} className="card p-3 border border-theme bg-surface-raised">
+                      <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-theme">
+                        <Calendar size={14} className="text-purple" />
+                        <h5 className="font-semibold text-xs text-secondary">
+                          {formatGroupDate(group.date)}
+                        </h5>
+                        <span className="badge badge-neutral badge-sm ml-auto">
+                          {group.slots.length} slot{group.slots.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {group.slots.map((slot) => {
+                          const isOpen = slot.status === 'open';
+                          return (
+                            <div
+                              key={slot._id}
+                              className="flex items-center justify-between p-2 rounded bg-surface border border-theme text-xs"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Clock size={13} className={isOpen ? 'text-teal' : 'text-muted'} />
+                                <div className="truncate">
+                                  <span className="font-semibold">{formatSlotTime(slot)}</span>
+                                  <span className="block font-mono text-2xs text-muted truncate">
+                                    #{slot._id.substring(0, 8)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span
+                                  className={`badge badge-${
+                                    isOpen ? 'success' : 'neutral'
+                                  } badge-sm`}
+                                >
+                                  {isOpen ? 'Open' : 'Booked'}
+                                </span>
+                                {isOpen && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-danger btn-xs flex items-center gap-1"
+                                    title="Delete Slot (DELETE /slots/:id)"
+                                    onClick={() => setSlotToDeleteId(slot._id)}
+                                    disabled={deleteSlotMutation.isPending}
+                                  >
+                                    <Trash2 size={11} /> Delete
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {slotsData.slots.map((slot) => {
+                      const isOpen = slot.status === 'open';
+                      return (
+                        <div
+                          key={slot._id}
+                          className="flex items-center justify-between p-2.5 rounded bg-surface-raised border border-theme text-xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Clock size={13} className={isOpen ? 'text-teal' : 'text-muted'} />
+                            <div className="truncate">
+                              <span className="font-semibold">{formatSlotTime(slot)}</span>
+                              <span className="block font-mono text-2xs text-muted truncate">
+                                #{slot._id.substring(0, 8)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span
+                              className={`badge badge-${isOpen ? 'success' : 'neutral'} badge-sm`}
+                            >
+                              {isOpen ? 'Open' : 'Booked'}
+                            </span>
+                            {isOpen && (
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-xs flex items-center gap-1"
+                                title="Delete Slot (DELETE /slots/:id)"
+                                onClick={() => setSlotToDeleteId(slot._id)}
+                                disabled={deleteSlotMutation.isPending}
+                              >
+                                <Trash2 size={11} /> Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Advanced: Manual MongoDB Slot ID Removal section */}
+            <details className="mt-4 pt-3 border-t border-theme">
+              <summary className="text-xs text-muted cursor-pointer font-medium hover:text-primary">
+                Advanced: Remove slot by custom MongoDB ObjectId
+              </summary>
+              <div className="mt-2.5">
+                <label className="form-label text-2xs" htmlFor="delete-slot-id">
+                  Slot MongoDB ObjectId to Remove (DELETE /slots/:id)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="delete-slot-id"
+                    type="text"
+                    className="form-input font-mono text-xs"
+                    placeholder="e.g. 6abd2953a0704e9c7f7c4077"
+                    value={slotIdInput}
+                    onChange={(e) => setSlotIdInput(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm flex items-center gap-1"
+                    onClick={() => setSlotToDeleteId(slotIdInput.trim())}
+                    disabled={!slotIdInput.trim() || deleteSlotMutation.isPending}
+                  >
+                    <Trash2 size={13} /> Remove Slot
+                  </button>
+                </div>
+              </div>
+            </details>
           </div>
         )}
       </Modal>

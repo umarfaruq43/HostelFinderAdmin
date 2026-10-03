@@ -20,6 +20,7 @@ import {
   getProvidersQueue,
   getPropertiesQueue,
   getReportsQueue,
+  getPlatformInspections,
 } from './api/adminServices';
 
 export const App: React.FC = () => {
@@ -50,6 +51,13 @@ export const App: React.FC = () => {
     staleTime: 30000,
   });
 
+  const { data: requestedInspections } = useQuery({
+    queryKey: ['admin', 'inspections', 'pending-count'],
+    queryFn: () => getPlatformInspections('requested'),
+    enabled: isAuthenticated,
+    staleTime: 30000,
+  });
+
   const { data: openReports } = useQuery({
     queryKey: ['admin', 'reports', 'open-count'],
     queryFn: () => getReportsQueue('open'),
@@ -61,6 +69,7 @@ export const App: React.FC = () => {
     students: pendingStudents?.students?.length || 0,
     providers: pendingProviders?.providers?.length || 0,
     properties: pendingProperties?.properties?.length || 0,
+    inspections: requestedInspections?.inspections?.length || 0,
     reports: openReports?.reports?.length || 0,
   };
 

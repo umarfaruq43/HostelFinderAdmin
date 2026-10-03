@@ -60,6 +60,7 @@ interface SidebarProps {
     providers?: number;
     properties?: number;
     reports?: number;
+    inspections?: number;
   };
 }
 
@@ -114,6 +115,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'inspections',
       label: 'Inspections',
       icon: CalendarCheck,
+      badge: pendingCounts.inspections,
+      badgeColor: 'amber',
     },
     {
       id: 'reports',

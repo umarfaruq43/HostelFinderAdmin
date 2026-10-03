@@ -55,6 +55,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
     queryFn: () => getPlatformInspections(),
   });
 
+  const { data: requestedInspections, isLoading: loadingRequested } = useQuery({
+    queryKey: ['admin', 'inspections', 'requested-overview'],
+    queryFn: () => getPlatformInspections('requested'),
+  });
+
   const { data: openReports, isLoading: loadingReports } = useQuery({
     queryKey: ['admin', 'reports', 'open'],
     queryFn: () => getReportsQueue('open'),
@@ -72,6 +77,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
   const pendingStudentsCount = pendingStudents?.students?.length || 0;
   const pendingProvidersCount = pendingProviders?.providers?.length || 0;
   const pendingPropertiesCount = pendingProperties?.properties?.length || 0;
+  const pendingInspectionsCount = requestedInspections?.inspections?.length || 0;
   const openReportsCount = openReports?.reports?.length || 0;
   const totalInspections = inspectionsData?.inspections?.length || 0;
   const totalSchools = schoolsData?.schools?.length || 0;
@@ -84,10 +90,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
           <h2 className="hero-title">Welcome to OCHF Control Center</h2>
           <p className="hero-description">
             Live administration portal for Off-Campus Hostel Finder. Review pending student &
-            landlord accreditations, audit property listings, manage disputes, and oversee campus anchors.
+            landlord accreditations, audit property listings, moderate inspection requests, and oversee campus anchors.
           </p>
         </div>
-        <div className="hero-actions">
+        <div className="hero-actions flex gap-2">
+          {pendingInspectionsCount > 0 && (
+            <button
+              type="button"
+              className="btn btn-warning"
+              onClick={() => onNavigate('inspections')}
+            >
+              Review Inspections ({pendingInspectionsCount})
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-primary"
@@ -144,12 +159,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
         />
 
         <StatCard
-          title="Booked Inspections"
+          title="Inspection Bookings"
           value={totalInspections}
           icon={CalendarCheck}
           color="teal"
-          subtext="Appointments on platform"
-          isLoading={loadingInspections}
+          badge={pendingInspectionsCount > 0 ? `${pendingInspectionsCount} Pending Review` : 'All Clear'}
+          badgeType={pendingInspectionsCount > 0 ? 'warning' : 'success'}
+          subtext={
+            pendingInspectionsCount > 0
+              ? `${pendingInspectionsCount} awaiting admin moderation`
+              : `${totalInspections} total scheduled/confirmed`
+          }
+          isLoading={loadingInspections || loadingRequested}
           onClick={() => onNavigate('inspections')}
         />
 
