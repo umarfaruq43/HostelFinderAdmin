@@ -41,7 +41,13 @@ export interface ProviderProfile {
     isActive: boolean;
   } | null;
   businessName: string;
+  fullName?: string;
   phone?: string;
+  meansOfIdentification?: string;
+  idNumber?: string;
+  accountNumber?: string;
+  bankName?: string;
+  verificationDocUrl?: string;
   verificationStatus: VerificationStatus;
   createdAt: string;
   updatedAt: string;
@@ -55,6 +61,13 @@ export interface AdditionalCharge {
 export interface PropertyPhoto {
   url: string;
   order?: number;
+}
+
+export interface InspectionAvailabilityDay {
+  day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday' | string;
+  isAvailable: boolean;
+  from?: string;
+  to?: string;
 }
 
 export interface Property {
@@ -78,11 +91,14 @@ export interface Property {
   drivingTimeMinutes?: number;
   propertyType?: string[] | string;
   availabilityStatus?: string;
+  proofOfOwnershipUrl?: string;
+  inspectionAvailability?: InspectionAvailabilityDay[];
   verificationStatus: VerificationStatus;
   providerId?: {
     _id: string;
     userId?: string;
     businessName?: string;
+    fullName?: string;
     phone?: string;
     verificationStatus?: string;
   };
@@ -93,6 +109,7 @@ export interface Property {
 export type InspectionStatus =
   | 'requested'
   | 'confirmed'
+  | 'rescheduled'
   | 'completed'
   | 'missed'
   | 'cancelled'
@@ -130,7 +147,7 @@ export interface Inspection {
   updatedAt?: string;
 }
 
-export type ReportStatus = 'open' | 'reviewed' | 'resolved';
+export type ReportStatus = 'open' | 'investigating' | 'reviewed' | 'resolved' | 'dismissed';
 
 export interface Report {
   _id: string;
@@ -145,10 +162,49 @@ export interface Report {
     email?: string;
     fullName?: string;
   } | string;
+  targetUserId?: {
+    _id: string;
+    email?: string;
+    fullName?: string;
+    role?: string;
+  } | string;
   reason: string;
   status: ReportStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TransactionStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'failed';
+
+export interface Transaction {
+  _id: string;
+  inspectionId?: string | Inspection;
+  propertyId?: string | Property;
+  studentId?: string | StudentProfile | {
+    _id: string;
+    fullName?: string;
+    userId?: { _id: string; email: string };
+  };
+  providerId?: string | ProviderProfile | {
+    _id: string;
+    businessName?: string;
+  };
+  amount?: number;
+  totalAmount?: number;
+  status: TransactionStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UploadSingleResponse {
+  url: string;
+  message?: string;
+}
+
+export interface UploadMultipleResponse {
+  urls: string[];
+  count: number;
+  message?: string;
 }
 
 export interface School {

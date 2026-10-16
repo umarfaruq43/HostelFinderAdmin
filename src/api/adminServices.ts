@@ -6,11 +6,14 @@ import type {
   Property,
   Inspection,
   Report,
+  ReportStatus,
   School,
   Review,
   PropertySlotsResponse,
   LoginResponse,
   CurrentAccountResponse,
+  UploadSingleResponse,
+  UploadMultipleResponse,
 } from '../types';
 
 // Authentication
@@ -145,7 +148,7 @@ export async function getReportsQueue(status?: string): Promise<{ reports: Repor
 
 export async function updateReportStatus(
   reportId: string,
-  data: { status: 'reviewed' | 'resolved' }
+  data: { status: ReportStatus; reason?: string }
 ): Promise<{ message?: string; report?: Report }> {
   return apiFetch<{ message?: string; report?: Report }>(`/admin/reports/${reportId}`, {
     method: 'PUT',
@@ -245,3 +248,72 @@ export async function getPropertyReviews(
     }
   );
 }
+
+// 6. GET /properties/:id - Get property details by ID (Admin Unshielded View with optional schoolId)
+export async function getPropertyById(
+  propertyId: string,
+  schoolId?: string
+): Promise<{ property: Property }> {
+  return apiFetch<{ property: Property }>(`/properties/${propertyId}`, {
+    method: 'GET',
+    params: { schoolId: schoolId || undefined },
+  });
+}
+
+// 7. GET /properties - Browse / Audit Platform Properties (Admin View)
+export interface SearchPropertiesParams {
+  minPrice?: number;
+  maxPrice?: number;
+  schoolId?: string;
+  maxDistanceKm?: number;
+  amenities?: string;
+  propertyType?: string;
+  availability?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
+
+export async function searchProperties(
+  params?: SearchPropertiesParams
+): Promise<{ properties: Property[]; count?: number; total?: number; page?: number }> {
+  return apiFetch<{ properties: Property[]; count?: number; total?: number; page?: number }>(
+    '/properties',
+    {
+      method: 'GET',
+      params: {
+        minPrice: params?.minPrice,
+        maxPrice: params?.maxPrice,
+        schoolId: params?.schoolId,
+        maxDistanceKm: params?.maxDistanceKm,
+        amenities: params?.amenities,
+        propertyType: params?.propertyType,
+        availability: params?.availability,
+        sort: params?.sort,
+        page: params?.page,
+        limit: params?.limit,
+      },
+    }
+  );
+}
+
+// 8. POST /upload/single - Upload single document (Government ID or Property Proof of Ownership)
+export async function uploadSingleDocument(file: File): Promise<UploadSingleResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiFetch<UploadSingleResponse>('/upload/single', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+// 9. POST /upload/multiple - Upload multiple property photos
+export async function uploadMultiplePhotos(files: File[]): Promise<UploadMultipleResponse> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append('files', f));
+  return apiFetch<UploadMultipleResponse>('/upload/multiple', {
+    method: 'POST',
+    body: formData,
+  });
+}
+

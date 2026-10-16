@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getBaseUrl, setBaseUrl, DEFAULT_BASE_URL, getAuthToken } from '../../api/client';
+import {
+  getBaseUrl,
+  setBaseUrl,
+  DEFAULT_BASE_URL,
+  LOCAL_DEV_BASE_URL,
+  getAuthToken,
+} from '../../api/client';
 import { deleteAccount } from '../../api/adminServices';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -45,11 +51,11 @@ export const SettingsView: React.FC = () => {
     showToast('success', 'Backend Base URL updated');
   };
 
-  const handleResetDefaultUrl = () => {
-    setBaseUrlInput(DEFAULT_BASE_URL);
-    setBaseUrl(DEFAULT_BASE_URL);
+  const handleSetPresetUrl = (url: string, label: string) => {
+    setBaseUrlInput(url);
+    setBaseUrl(url);
     queryClient.invalidateQueries();
-    showToast('info', `Reset to default: ${DEFAULT_BASE_URL}`);
+    showToast('info', `Switched API endpoint to ${label}: ${url}`);
   };
 
   const handleCopyToken = () => {
@@ -148,16 +154,27 @@ export const SettingsView: React.FC = () => {
                 />
               </div>
 
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary flex-1">
-                  Save Changes
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-2xs text-muted font-medium">Quick Presets:</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-xs"
+                  onClick={() => handleSetPresetUrl(LOCAL_DEV_BASE_URL, 'Local Dev (Port 2008)')}
+                >
+                  Local Port 2008
                 </button>
                 <button
                   type="button"
-                  className="btn btn-secondary"
-                  onClick={handleResetDefaultUrl}
+                  className="btn btn-secondary btn-xs"
+                  onClick={() => handleSetPresetUrl(DEFAULT_BASE_URL, 'Cloud Render')}
                 >
-                  Reset Default
+                  Cloud Render
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button type="submit" className="btn btn-primary flex-1">
+                  Save Changes
                 </button>
               </div>
             </form>

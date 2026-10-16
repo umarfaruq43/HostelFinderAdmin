@@ -1,4 +1,5 @@
 export const DEFAULT_BASE_URL = 'https://hostelfinderbe.onrender.com';
+export const LOCAL_DEV_BASE_URL = 'http://localhost:2008';
 
 export function getBaseUrl(): string {
   return localStorage.getItem('ochf_base_url') || DEFAULT_BASE_URL;
@@ -60,8 +61,9 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
   }
 
   const token = getAuthToken();
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 

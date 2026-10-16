@@ -13,6 +13,13 @@ import {
   Eye,
   Mail,
   Phone,
+  FileText,
+  CreditCard,
+  ExternalLink,
+  ShieldCheck,
+  Copy,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import type { ProviderProfile } from '../../types';
 
@@ -24,6 +31,14 @@ export const ProvidersQueue: React.FC = () => {
   const [selectedProviderForAction, setSelectedProviderForAction] = useState<ProviderProfile | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
   const [viewProvider, setViewProvider] = useState<ProviderProfile | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(label);
+    showToast('info', `${label} copied to clipboard`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   // Queries
   const { data: providersData, isLoading, isError, error } = useQuery({
@@ -168,9 +183,21 @@ export const ProvidersQueue: React.FC = () => {
                             <span className="user-cell-name">
                               {provider.businessName || 'Unnamed Business'}
                             </span>
-                            <span className="user-cell-email">
-                              ID: {provider._id.substring(0, 10)}...
-                            </span>
+                            {provider.fullName && (
+                              <span className="text-2xs text-secondary font-medium">
+                                Contact: {provider.fullName}
+                              </span>
+                            )}
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="user-cell-email">
+                                ID: {provider._id.substring(0, 8)}...
+                              </span>
+                              {provider.verificationDocUrl && (
+                                <span className="badge badge-teal badge-xs flex items-center gap-0.5" title="Government ID document uploaded">
+                                  <FileText size={10} /> ID Doc
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -187,6 +214,12 @@ export const ProvidersQueue: React.FC = () => {
                             <div className="flex items-center gap-1.5 text-muted">
                               <Phone size={12} />
                               <span>{provider.phone}</span>
+                            </div>
+                          )}
+                          {provider.bankName && (
+                            <div className="flex items-center gap-1.5 text-muted text-2xs">
+                              <CreditCard size={11} className="text-teal" />
+                              <span>{provider.bankName}</span>
                             </div>
                           )}
                         </div>
@@ -280,51 +313,237 @@ export const ProvidersQueue: React.FC = () => {
           onClose={() => setViewProvider(null)}
           title="Provider Accreditation Profile"
           subtitle={`Provider ID: ${viewProvider._id}`}
-          maxWidth="md"
+          maxWidth="lg"
           footer={
-            <div className="flex justify-between w-full items-center">
-              <Badge variant="status" value={viewProvider.verificationStatus} />
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setViewProvider(null)}
-              >
-                Close
-              </button>
+            <div className="flex justify-between w-full items-center flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="status" value={viewProvider.verificationStatus} />
+                <span className="text-xs text-muted">
+                  {viewProvider.userId?.isActive ? 'Account Active' : 'Account Suspended'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setViewProvider(null)}
+                >
+                  Close
+                </button>
+
+                {viewProvider.verificationStatus === 'pending' && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      onClick={() => {
+                        const prov = viewProvider;
+                        setViewProvider(null);
+                        handleOpenReject(prov);
+                      }}
+                    >
+                      <XCircle size={15} /> Reject Application
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-success"
+                      onClick={() => {
+                        const prov = viewProvider;
+                        setViewProvider(null);
+                        handleOpenApprove(prov);
+                      }}
+                    >
+                      <CheckCircle size={15} /> Accredit & Verify
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           }
         >
-          <div className="space-y-4">
-            <div className="detail-grid">
-              <div className="detail-item">
-                <span className="detail-label">Business / Brand Name</span>
-                <span className="detail-value">{viewProvider.businessName || '—'}</span>
+          <div className="space-y-5">
+            {/* Business Header Overview */}
+            <div className="p-4 rounded-lg bg-surface-raised border border-theme flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="avatar-circle avatar-provider" style={{ width: 44, height: 44, fontSize: 18 }}>
+                  {viewProvider.businessName ? viewProvider.businessName.charAt(0).toUpperCase() : 'P'}
+                </div>
+                <div>
+                  <h4 className="font-bold text-base text-primary">
+                    {viewProvider.businessName || 'Unnamed Business'}
+                  </h4>
+                  <p className="text-xs text-muted mt-0.5">
+                    {viewProvider.fullName ? `Contact Representative: ${viewProvider.fullName}` : 'Landlord / Provider'}
+                  </p>
+                </div>
+              </div>
+              <span className="badge badge-info badge-sm flex items-center gap-1 font-mono">
+                <ShieldCheck size={13} /> {viewProvider.verificationStatus.toUpperCase()}
+              </span>
+            </div>
+
+            {/* Section 1: Government Identity & Credentials (API v2) */}
+            <div className="card p-4 border border-theme">
+              <h5 className="font-semibold text-xs uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-teal" /> Landlord Identity & Government ID (API v2)
+              </h5>
+
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Full Legal Name</span>
+                  <span className="detail-value font-medium">
+                    {viewProvider.fullName || '—'}
+                  </span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Means of Identification</span>
+                  <span className="detail-value font-medium">
+                    {viewProvider.meansOfIdentification || 'Not specified'}
+                  </span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Government ID / NIN Number</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="font-mono text-xs font-bold text-primary">
+                      {viewProvider.idNumber || '—'}
+                    </span>
+                    {viewProvider.idNumber && (
+                      <button
+                        type="button"
+                        className="btn-ghost-xs"
+                        onClick={() => handleCopyText(viewProvider.idNumber!, 'ID Number')}
+                        title="Copy ID Number"
+                      >
+                        {copiedField === 'ID Number' ? (
+                          <Check size={11} className="text-success" />
+                        ) : (
+                          <Copy size={11} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Government ID Document</span>
+                  {viewProvider.verificationDocUrl ? (
+                    <div className="mt-1">
+                      <a
+                        href={viewProvider.verificationDocUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline-primary btn-xs inline-flex items-center gap-1.5"
+                      >
+                        <FileText size={12} /> Inspect Uploaded ID Document <ExternalLink size={10} />
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted flex items-center gap-1 mt-0.5">
+                      <AlertCircle size={12} className="text-amber" /> No ID file attached
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="detail-item">
-                <span className="detail-label">Account Owner Email</span>
-                <span className="detail-value font-mono">
-                  {viewProvider.userId?.email || '—'}
-                </span>
-              </div>
+              {/* Document Image Preview if URL is an image */}
+              {viewProvider.verificationDocUrl && (
+                <div className="mt-3 pt-3 border-t border-theme">
+                  <span className="text-2xs text-muted block mb-1.5 font-medium">Document Preview:</span>
+                  <div className="p-2 bg-surface-sunken rounded border border-theme max-h-48 overflow-hidden flex items-center justify-center">
+                    <img
+                      src={viewProvider.verificationDocUrl}
+                      alt="Government ID"
+                      className="max-h-44 object-contain rounded"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
-              <div className="detail-item">
-                <span className="detail-label">Contact Phone</span>
-                <span className="detail-value">{viewProvider.phone || '—'}</span>
-              </div>
+            {/* Section 2: Payout Banking Information (API v2) */}
+            <div className="card p-4 border border-theme">
+              <h5 className="font-semibold text-xs uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5">
+                <CreditCard size={14} className="text-purple" /> Payout Bank Details (API v2)
+              </h5>
 
-              <div className="detail-item">
-                <span className="detail-label">Account Active</span>
-                <span className="detail-value">
-                  {viewProvider.userId?.isActive ? 'Yes (Active)' : 'No (Suspended)'}
-                </span>
-              </div>
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Bank Name</span>
+                  <span className="detail-value font-semibold text-primary">
+                    {viewProvider.bankName || '—'}
+                  </span>
+                </div>
 
-              <div className="detail-item">
-                <span className="detail-label">Registered Date</span>
-                <span className="detail-value">
-                  {new Date(viewProvider.createdAt).toLocaleString()}
-                </span>
+                <div className="detail-item">
+                  <span className="detail-label">Payout Account Number</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="font-mono text-sm font-bold text-teal">
+                      {viewProvider.accountNumber || '—'}
+                    </span>
+                    {viewProvider.accountNumber && (
+                      <button
+                        type="button"
+                        className="btn-ghost-xs"
+                        onClick={() => handleCopyText(viewProvider.accountNumber!, 'Account Number')}
+                        title="Copy Account Number"
+                      >
+                        {copiedField === 'Account Number' ? (
+                          <Check size={11} className="text-success" />
+                        ) : (
+                          <Copy size={11} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Contact & System Metadata */}
+            <div className="card p-4 border border-theme">
+              <h5 className="font-semibold text-xs uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5">
+                <Mail size={14} className="text-blue" /> Contact & Account Metadata
+              </h5>
+
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Account Owner Email</span>
+                  <span className="detail-value font-mono text-xs">
+                    {viewProvider.userId?.email || '—'}
+                  </span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Contact Phone</span>
+                  <span className="detail-value font-mono text-xs">
+                    {viewProvider.phone || '—'}
+                  </span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Account Active Status</span>
+                  <span className="detail-value text-xs font-semibold">
+                    {viewProvider.userId?.isActive ? (
+                      <span className="text-success">Active</span>
+                    ) : (
+                      <span className="text-danger">Suspended</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Registration Date</span>
+                  <span className="detail-value text-xs">
+                    {new Date(viewProvider.createdAt).toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ import {
   Building,
   Image as ImageIcon,
   Trash2,
+  FileText,
 } from 'lucide-react';
 import type { Property } from '../../types';
 
@@ -217,6 +218,13 @@ export const PropertiesQueue: React.FC = () => {
                                 </>
                               )}
                             </div>
+                            {prop.proofOfOwnershipUrl && (
+                              <div className="mt-1">
+                                <span className="badge badge-teal badge-xs flex items-center gap-0.5 w-max" title="Ownership certificate attached">
+                                  <FileText size={10} /> Ownership Doc
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>

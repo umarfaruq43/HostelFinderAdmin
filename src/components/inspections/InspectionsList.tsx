@@ -10,6 +10,7 @@ import { Badge } from '../common/Badge';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Modal } from '../common/Modal';
 import { EmptyState } from '../common/EmptyState';
+import { useDebounce } from '../../hooks/useDebounce';
 import {
   CalendarCheck,
   Calendar,
@@ -24,6 +25,7 @@ import {
   Mail,
   RefreshCw,
   Phone,
+  Search,
 } from 'lucide-react';
 import type { Inspection } from '../../types';
 
@@ -32,6 +34,8 @@ export const InspectionsList: React.FC = () => {
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<string>('requested');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [inspectionToCancel, setInspectionToCancel] = useState<Inspection | null>(null);
   const [inspectionToApprove, setInspectionToApprove] = useState<Inspection | null>(null);
   const [inspectionToReject, setInspectionToReject] = useState<Inspection | null>(null);
@@ -111,7 +115,26 @@ export const InspectionsList: React.FC = () => {
     },
   });
 
-  const inspections = inspectionsData?.inspections || [];
+  const rawInspections = inspectionsData?.inspections || [];
+  const inspections = debouncedSearch
+    ? rawInspections.filter((insp) => {
+        const term = debouncedSearch.toLowerCase();
+        const title = typeof insp.propertyId === 'object' ? insp.propertyId?.title || '' : '';
+        const addr = typeof insp.propertyId === 'object' ? insp.propertyId?.address || '' : '';
+        const student =
+          typeof insp.studentId === 'object'
+            ? `${insp.studentId?.fullName || ''} ${insp.studentId?.userId?.email || ''}`
+            : '';
+        const provider =
+          typeof insp.providerId === 'object' ? insp.providerId?.businessName || '' : '';
+        return (
+          title.toLowerCase().includes(term) ||
+          addr.toLowerCase().includes(term) ||
+          student.toLowerCase().includes(term) ||
+          provider.toLowerCase().includes(term)
+        );
+      })
+    : rawInspections;
 
   const handleOpenRejectModal = (insp: Inspection) => {
     setInspectionToReject(insp);
@@ -140,6 +163,13 @@ export const InspectionsList: React.FC = () => {
               onClick={() => setStatusFilter('confirmed')}
             >
               Confirmed
+            </button>
+            <button
+              type="button"
+              className={`tab-btn ${statusFilter === 'rescheduled' ? 'tab-btn-active' : ''}`}
+              onClick={() => setStatusFilter('rescheduled')}
+            >
+              Rescheduled
             </button>
             <button
               type="button"
@@ -184,6 +214,26 @@ export const InspectionsList: React.FC = () => {
         </div>
 
         <div className="filter-row">
+          <div className="search-field">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search by hostel, student, landlord, or address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <div className="filter-group">
             <Filter size={16} className="text-muted" />
             <select
@@ -194,6 +244,7 @@ export const InspectionsList: React.FC = () => {
             >
               <option value="requested">Pending Requests (awaiting moderation)</option>
               <option value="confirmed">Confirmed</option>
+              <option value="rescheduled">Rescheduled</option>
               <option value="completed">Completed / Attended</option>
               <option value="rejected">Rejected by Admin</option>
               <option value="cancelled">Cancelled</option>

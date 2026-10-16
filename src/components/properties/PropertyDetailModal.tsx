@@ -24,6 +24,9 @@ import {
   Clock,
   Sparkles,
   RefreshCw,
+  FileText,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import type { Property, Review, Slot } from '../../types';
 
@@ -293,6 +296,102 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     <div key={idx} className="charge-item">
                       <span className="text-xs text-secondary">{ch.name}:</span>
                       <span className="text-xs font-semibold">₦{ch.amount?.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Proof of Ownership Verification (API v2) */}
+            <div className="card p-4 border border-theme bg-surface-raised">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="font-semibold text-xs uppercase tracking-wider text-muted flex items-center gap-1.5">
+                  <FileText size={15} className="text-teal" /> Proof of Ownership Document (API v2)
+                </h5>
+                {property.proofOfOwnershipUrl ? (
+                  <span className="badge badge-success badge-sm flex items-center gap-1">
+                    <CheckCircle size={11} /> Document Attached
+                  </span>
+                ) : (
+                  <span className="badge badge-warning badge-sm flex items-center gap-1">
+                    <AlertCircle size={11} /> No Document Provided
+                  </span>
+                )}
+              </div>
+
+              {property.proofOfOwnershipUrl ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface border border-theme">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FileText size={20} className="text-teal flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="font-medium text-xs text-primary block truncate">
+                          Landlord Ownership Verification Certificate
+                        </span>
+                        <span className="text-2xs font-mono text-muted block truncate">
+                          {property.proofOfOwnershipUrl}
+                        </span>
+                      </div>
+                    </div>
+                    <a
+                      href={property.proofOfOwnershipUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary btn-xs flex items-center gap-1 flex-shrink-0 ml-2"
+                    >
+                      <ExternalLink size={12} /> Inspect Document
+                    </a>
+                  </div>
+
+                  {/* Embedded image preview if image URL */}
+                  <div className="p-2 bg-surface-sunken rounded border border-theme max-h-48 overflow-hidden flex items-center justify-center">
+                    <img
+                      src={property.proofOfOwnershipUrl}
+                      alt="Proof of Ownership"
+                      className="max-h-44 object-contain rounded"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-secondary italic">
+                  The landlord has not uploaded a proof of ownership document for this hostel listing.
+                </p>
+              )}
+            </div>
+
+            {/* Weekly Recurring Availability Schedule (API v2) */}
+            {property.inspectionAvailability && property.inspectionAvailability.length > 0 && (
+              <div className="card p-4 border border-theme bg-surface-raised">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-semibold text-xs uppercase tracking-wider text-muted flex items-center gap-1.5">
+                    <Calendar size={15} className="text-purple" /> Weekly Inspection Schedule (API v2)
+                  </h5>
+                  <span className="badge badge-purple badge-sm">Weekly Windows</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                  {property.inspectionAvailability.map((sched, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded text-center border text-xs ${
+                        sched.isAvailable
+                          ? 'bg-surface border-teal-subtle text-primary font-medium shadow-xs'
+                          : 'bg-surface-sunken border-theme text-muted'
+                      }`}
+                    >
+                      <span className="block font-bold uppercase text-2xs mb-0.5">
+                        {sched.day}
+                      </span>
+                      {sched.isAvailable ? (
+                        <span className="text-2xs font-semibold text-teal block">
+                          {sched.from && sched.to ? `${sched.from} – ${sched.to}` : 'Available'}
+                        </span>
+                      ) : (
+                        <span className="text-2xs text-muted block">Closed</span>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -11,47 +11,60 @@ import {
   Clock,
   Home,
   User,
+  XCircle,
+  Receipt,
 } from 'lucide-react';
-import type { Report } from '../../types';
+import type { Report, ReportStatus } from '../../types';
 
 export const ReportsList: React.FC = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'open' | 'reviewed' | 'resolved' | ''>('open');
+  const [activeTab, setActiveTab] = useState<ReportStatus | 'all'>('open');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [targetStatus, setTargetStatus] = useState<'reviewed' | 'resolved'>('resolved');
+  const [targetStatus, setTargetStatus] = useState<ReportStatus>('resolved');
+  const [resolutionReason, setResolutionReason] = useState<string>('');
 
   // Query
   const { data: reportsData, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'reports', activeTab],
-    queryFn: () => getReportsQueue(activeTab || undefined),
+    queryFn: () => getReportsQueue(activeTab === 'all' ? undefined : activeTab),
   });
 
   // Mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({ reportId, status }: { reportId: string; status: 'reviewed' | 'resolved' }) =>
-      updateReportStatus(reportId, { status }),
+    mutationFn: ({
+      reportId,
+      status,
+      reason,
+    }: {
+      reportId: string;
+      status: ReportStatus;
+      reason?: string;
+    }) => updateReportStatus(reportId, { status, reason }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
       showToast('success', `Report marked as ${variables.status}`);
       setSelectedReport(null);
+      setResolutionReason('');
     },
     onError: (err: Error) => {
       showToast('error', err.message || 'Failed to update report status');
     },
   });
 
-  const handleOpenUpdate = (report: Report, status: 'reviewed' | 'resolved') => {
+  const handleOpenUpdate = (report: Report, status: ReportStatus) => {
     setSelectedReport(report);
     setTargetStatus(status);
+    setResolutionReason('');
   };
 
-  const handleConfirmUpdate = async () => {
+  const handleConfirmUpdate = async (reason?: string) => {
     if (!selectedReport) return;
     await updateStatusMutation.mutateAsync({
       reportId: selectedReport._id,
       status: targetStatus,
+      reason: reason || resolutionReason || undefined,
     });
   };
 
@@ -70,10 +83,17 @@ export const ReportsList: React.FC = () => {
         </button>
         <button
           type="button"
+          className={`tab-btn ${activeTab === 'investigating' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('investigating')}
+        >
+          Under Investigation
+        </button>
+        <button
+          type="button"
           className={`tab-btn ${activeTab === 'reviewed' ? 'tab-btn-active' : ''}`}
           onClick={() => setActiveTab('reviewed')}
         >
-          Under Review
+          Reviewed
         </button>
         <button
           type="button"
@@ -84,8 +104,15 @@ export const ReportsList: React.FC = () => {
         </button>
         <button
           type="button"
-          className={`tab-btn ${activeTab === '' ? 'tab-btn-active' : ''}`}
-          onClick={() => setActiveTab('')}
+          className={`tab-btn ${activeTab === 'dismissed' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('dismissed')}
+        >
+          Dismissed
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'all' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('all')}
         >
           All Reports
         </button>
@@ -131,29 +158,66 @@ export const ReportsList: React.FC = () => {
               </thead>
               <tbody>
                 {reports.map((report) => {
+                  const hasProperty = Boolean(report.propertyId);
                   const propertyTitle =
                     typeof report.propertyId === 'object' && report.propertyId?.title
                       ? report.propertyId.title
                       : report.propertyId
                       ? `Property #${String(report.propertyId).substring(0, 8)}`
-                      : 'Platform Entity';
+                      : null;
+
+                  const targetUserEmail =
+                    typeof report.targetUserId === 'object' && report.targetUserId?.email
+                      ? report.targetUserId.email
+                      : typeof report.targetUserId === 'string'
+                      ? `User #${report.targetUserId.substring(0, 8)}`
+                      : !hasProperty && typeof report.userId === 'object' && report.userId?.email
+                      ? report.userId.email
+                      : null;
 
                   const reporterEmail =
                     typeof report.userId === 'object' && report.userId?.email
                       ? report.userId.email
                       : 'Authenticated User';
 
-                  const isOpen = report.status === 'open';
+                  const canAct = report.status !== 'resolved' && report.status !== 'dismissed';
 
                   return (
                     <tr key={report._id}>
                       <td>
-                        <div className="flex items-center gap-2">
-                          <Home size={15} className="text-rose flex-shrink-0" />
-                          <span className="font-semibold text-sm" title={propertyTitle}>
-                            {propertyTitle}
-                          </span>
-                        </div>
+                        {hasProperty ? (
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <Home size={15} className="text-rose flex-shrink-0" />
+                              <span className="font-semibold text-sm truncate max-w-xs" title={propertyTitle || ''}>
+                                {propertyTitle}
+                              </span>
+                            </div>
+                            <span className="badge badge-rose badge-xs w-max mt-1">Hostel Listing</span>
+                          </div>
+                        ) : targetUserEmail ? (
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <User size={15} className="text-amber flex-shrink-0" />
+                              <span className="font-semibold text-sm truncate max-w-xs" title={targetUserEmail}>
+                                {targetUserEmail}
+                              </span>
+                            </div>
+                            <span className="badge badge-amber badge-xs w-max mt-1">Student / User</span>
+                          </div>
+                        ) : report.transactionId ? (
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <Receipt size={15} className="text-teal flex-shrink-0" />
+                              <span className="font-semibold text-sm font-mono">
+                                Tx: #{String(report.transactionId).substring(0, 8)}
+                              </span>
+                            </div>
+                            <span className="badge badge-teal badge-xs w-max mt-1">Rent Transaction</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted text-xs">Platform Entity</span>
+                        )}
                       </td>
 
                       <td>
@@ -187,26 +251,37 @@ export const ReportsList: React.FC = () => {
 
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {isOpen && (
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              title="Mark as Under Review"
-                              onClick={() => handleOpenUpdate(report, 'reviewed')}
-                            >
-                              <Clock size={13} /> Under Review
-                            </button>
-                          )}
+                          {canAct && (
+                            <>
+                              {report.status !== 'investigating' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  title="Mark Under Investigation (PUT /admin/reports/:id)"
+                                  onClick={() => handleOpenUpdate(report, 'investigating')}
+                                >
+                                  <Clock size={13} /> Investigate
+                                </button>
+                              )}
 
-                          {report.status !== 'resolved' && (
-                            <button
-                              type="button"
-                              className="btn btn-success btn-sm"
-                              title="Mark as Resolved"
-                              onClick={() => handleOpenUpdate(report, 'resolved')}
-                            >
-                              <CheckCircle size={13} /> Resolve
-                            </button>
+                              <button
+                                type="button"
+                                className="btn btn-success btn-sm"
+                                title="Resolve Report & Enforce Action (PUT /admin/reports/:id)"
+                                onClick={() => handleOpenUpdate(report, 'resolved')}
+                              >
+                                <CheckCircle size={13} /> Resolve
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-sm"
+                                title="Dismiss Report (PUT /admin/reports/:id)"
+                                onClick={() => handleOpenUpdate(report, 'dismissed')}
+                              >
+                                <XCircle size={13} /> Dismiss
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -228,15 +303,37 @@ export const ReportsList: React.FC = () => {
           title={
             targetStatus === 'resolved'
               ? 'Mark Report as Resolved'
-              : 'Mark Report as Under Review'
+              : targetStatus === 'dismissed'
+              ? 'Dismiss Report'
+              : targetStatus === 'investigating'
+              ? 'Move to Investigation'
+              : 'Mark as Under Review'
           }
           message={
             targetStatus === 'resolved'
-              ? 'Are you sure you want to mark this dispute/complaint as resolved? This indicates investigation and necessary corrective actions have completed.'
-              : 'Move this ticket into "Reviewed" status to indicate it is currently under investigation by admin staff.'
+              ? 'Are you sure you want to resolve this report/complaint? This indicates investigation and corrective actions have completed.'
+              : targetStatus === 'dismissed'
+              ? 'Dismiss this report if it is unfounded, duplicate, or invalid. The reporter will be notified.'
+              : 'Move this dispute ticket into active investigation by the admin compliance team.'
           }
-          confirmLabel={targetStatus === 'resolved' ? 'Mark Resolved' : 'Mark Under Review'}
-          variant={targetStatus === 'resolved' ? 'success' : 'primary'}
+          confirmLabel={
+            targetStatus === 'resolved'
+              ? 'Resolve Report'
+              : targetStatus === 'dismissed'
+              ? 'Dismiss Report'
+              : targetStatus === 'investigating'
+              ? 'Start Investigation'
+              : 'Mark Under Review'
+          }
+          variant={
+            targetStatus === 'resolved'
+              ? 'success'
+              : targetStatus === 'dismissed'
+              ? 'danger'
+              : 'primary'
+          }
+          requireReason={targetStatus === 'dismissed'}
+          reasonPlaceholder="Optional note or reason for this status update..."
           isLoading={updateStatusMutation.isPending}
         />
       )}
